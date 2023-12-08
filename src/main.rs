@@ -1,29 +1,26 @@
-use std::io::{self, Read, Write};
 use rand::distributions::{Bernoulli, Distribution};
+use std::io::{self, Read, Write};
+
+const MASK: [u8; 8] = [0x80, 0x40, 0x20, 0x10, 0x8, 0x4, 0x2, 0x1];
 
 fn main() {
-    let mut buffer = Vec::<u8>::new();
+    let mut buffer = Vec::new();
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     let _ = handle.read_to_end(&mut buffer);
 
-    let output = flip_bits(buffer, 0.01);
+    let mut output = Vec::with_capacity(buffer.len());
+    let dist = Bernoulli::new(0.01).unwrap();
 
-    let _ = io::stdout().write_all(&output);
-}
-
-fn flip_bits(data: Vec<u8>, probability: f64) -> Vec<u8> {
-    let mut data = data.clone();
-    for bit in &mut data {
-        let dist = Bernoulli::new(probability).unwrap();
-        let mut err_byte = 0_u8;
-        for i in 0..8 {
-            let flips = dist.sample(&mut rand::thread_rng());
-            if flips {
-                err_byte += 1<<i;
+    for byte in buffer {
+        let mut err_byte = 0;
+        for byte in MASK {
+            if dist.sample(&mut rand::thread_rng()) {
+                err_byte |= byte;
             }
         }
-        *bit ^= err_byte;
-    } 
-    data
+        output.push(byte ^ err_byte);
+    }
+
+    let _ = io::stdout().write_all(&output);
 }
